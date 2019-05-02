@@ -83,7 +83,7 @@ def serve_layout():
                     {'label': "Volume of Trades (Thousands)", 'value': "VOLUME OF TRADES (000'S)"},
                     {'label': 'Number of Trades', 'value': 'NUMBER OF TRADES'}],
                     placeholder='Select Measure',
-                    id='select measure',
+                    id='select tba measure',
                     value='AVERAGE PRICE'),
             ], className='three columns'),
             html.Div([
@@ -118,7 +118,29 @@ def serve_layout():
                     value='Current Month'),
             ], className='three columns'),
         ], className='row'),
-        dcc.Graph(id='agency prices'),
+        dcc.Graph(id='agency tba prices'),
+
+        # now start the third pricing chart
+        html.H5(children='Agency CMO Prices (FINRA)'),
+        html.Div([
+            html.Div([
+                dcc.Dropdown(options=[
+                    {'label': 'Average Price', 'value': 'AVERAGE PRICE'},
+                    {'label': 'Weighted Average Price', 'value': 'WEIGHTED AVG. PRICE'},
+                    {'label': 'Average Price, Bottom 5 Trades', 'value': 'AVG. PRICE BOTTOM 5 TRADES'},
+                    {'label': 'Average Price, Top 5 Trades', 'value': 'AVG. PRICE TOP 5 TRADES'},
+                    {'label': '2nd Quartile Price', 'value': '2ND QUARTILE PRICE'},
+                    {'label': '3rd Quartile Price', 'value': '3RD QUARTILE PRICE'},
+                    {'label': '4th Quartile Price', 'value': '4TH QUARTILE PRICE'},
+                    {'label': 'Standard Deviation', 'value': 'STANDARD DEVIATION'},
+                    {'label': "Volume of Trades (Thousands)", 'value': "VOLUME OF TRADES (000'S)"},
+                    {'label': 'Number of Trades', 'value': 'NUMBER OF TRADES'}],
+                    placeholder='Select TBA Measure',
+                    id='select cmo measure',
+                    value='AVERAGE PRICE'),
+            ], className='three columns'),
+        ], className='row'),
+        dcc.Graph(id='agency cmo prices'),
     ])
 app.layout = serve_layout
 
@@ -248,8 +270,8 @@ def update_figure(selected_trade, selected_security, selected_mortgage):
     return build_figure(selected_trade, selected_security, selected_mortgage)
 
 @app.callback(
-    Output('agency prices', 'figure'),
-    [Input('select measure', 'value'),
+    Output('agency tba prices', 'figure'),
+    [Input('select tba measure', 'value'),
      Input('select asset class subtype', 'value'),
      Input('select coupon type', 'value'),
      Input('select settlement month', 'value'),
@@ -260,4 +282,4 @@ def update_figure(selected_measure, selected_asset_class_subtype, selected_coupo
 
 
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
