@@ -37,7 +37,7 @@ for zfile in os.listdir(directory):
         # agency - filter out excess rows and add columns
         agency_df = agency_df[~(agency_df[0] == agency_df[1])]
         agency_df.columns = ['AssetClass', 'AssetClassSubType', 'FNMATradeCount', 'FNMAUniqueID', 'FNMA$Trades',
-                             'FHLMLCTradeCount', 'FHLMCUniqueID', 'FHLMLC$Trades', 'GNMATradeCount', 'GNMAUniqueID',
+                             'FHLMCTradeCount', 'FHLMCUniqueID', 'FHLMC$Trades', 'GNMATradeCount', 'GNMAUniqueID',
                              'GNMA$Trades', 'OtherTradeCount', 'OtherUniqueID', 'Other$Trades']
 
         # agency - add date 
