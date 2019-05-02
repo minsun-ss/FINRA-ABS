@@ -129,4 +129,62 @@ def gettbaprices(directory):
 
             df.to_csv('tbaprices.csv', header=False, index=False, mode='a')
 
+
+def get_agencycmo_prices(directory):
+    for zfile in os.listdir(directory):
+        filename = os.fsdecode(zfile)
+        zf = zipfile.ZipFile('data/' + filename)
+
+        price_fields = ['AVERAGE PRICE', 'WEIGHTED AVG. PRICE', 'AVG. PRICE BOTTOM 5 TRADES', '2ND QUARTILE PRICE',
+                        '3RD QUARTILE PRICE', '4TH QUARTILE PRICE', 'AVG. PRICE TOP 5 TRADES', 'STANDARD DEVIATION',
+                        'VOLUME OF TRADES (000\'S)', 'NUMBER OF TRADES']
+
+        price_fields_subcategory = ['CUSTOMER BUY', 'CUSTOMER SELL', 'DEALER TO DEALER', '<= $1MM', '<= $10MM',
+                                    '<= $100MM', '> $100MM']
+
+        # build namelist of specific files I need
+        pxtables_list = [i for i in zf.namelist() if 'PXTABLES' in i]
+
+        for trading_day in pxtables_list:
+            # get trading day date
+            trading_date = trading_day.split('-')[1].replace('.xlsx', '')
+
+            # should i fix trading date?
+            trading_date = '{}/{}/{}'.format(trading_date[4:6], trading_date[6:], trading_date[:4])
+
+            # build monthlist:
+            current_month = int(trading_date[0:2])
+            chart_month_list = {current_month: 'Current Month', (current_month + 1) % 12: 'Current Month + 1',
+                                (current_month + 2) % 12: 'Current Month + 2',
+                                (current_month + 3) % 12: 'Current Month + 3'}
+
+            # start reading stuff in
+            df = pd.read_excel(zf.open(trading_day), sheet_name='AgencyCMO', skiprows=8, header=None)
+
+            df.replace(np.NaN, '', inplace=True)
+            df = df.loc[:df[df[1].str.contains('Indicates')].index.values[0] - 2]
+            df[0] = df[1].where(df[1].isin(price_fields)).fillna(method='ffill')
+
+            df[6] = df[1].where(df[1].isin(price_fields_subcategory))
+            df[7] = df[1].where(~((df[1].isin(price_fields) ^ (df[1].isin(price_fields_subcategory))))).fillna(
+                method='ffill')
+            df[8] = df[1].where(df[1].str.contains('PRICING TABLE')).fillna(method='ffill')
+            df = df[~(df[1] == df[7])]
+            df.drop(1, axis=1, inplace=True)
+            df[8] = df[8].str.replace('PRICING TABLE: ', '')
+            df[8] = df[8].str.replace(' - BY DEAL VINTAGE', '')
+            df.columns = ['Measure', 'Pre-2009', '2009-2013', '2014-2016', 'Post-2016', 'Measure2', 'Agency',
+                          'MortgageType']
+
+            df.Measure2 = df.Measure2.fillna('TOTAL')
+            df['Date'] = trading_date
+
+            # check to see if filepath exists and append headers if they don't
+            if os.path.isfile('agencycmoprices.csv'):
+                pass
+            else:
+                pd.DataFrame(df.columns).transpose().to_csv('agencycmoprices.csv', header=False, index=False, mode='a')
+
+            df.to_csv('agencycmoprices.csv', header=False, index=False, mode='a')
+
 gettbaprices(directory)
