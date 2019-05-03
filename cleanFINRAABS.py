@@ -187,4 +187,64 @@ def get_agencycmo_prices(directory):
 
             df.to_csv('agencycmoprices.csv', header=False, index=False, mode='a')
 
+def get_agencymbs_prices(directory):
+    for zfile in os.listdir(directory):
+        filename = os.fsdecode(zfile)
+        zf = zipfile.ZipFile('data/' + filename)
+
+        # build namelist of specific files I need
+        star_list = [i for i in zf.namelist() if 'PXTABLES' in i]
+
+        price_fields = ['AVERAGE PRICE', 'WEIGHTED AVG. PRICE', 'AVG. PRICE BOTTOM 5 TRADES', '2ND QUARTILE PRICE',
+                        '3RD QUARTILE PRICE', '4TH QUARTILE PRICE', 'AVG. PRICE TOP 5 TRADES', 'STANDARD DEVIATION',
+                        'VOLUME OF TRADES (000\'S)', 'NUMBER OF TRADES']
+
+        for trading_day in star_list:
+            # get trading day date
+            trading_date = trading_day.split('-')[1].replace('.xlsx', '')
+
+            # should i fix trading date?
+            trading_date = '{}/{}/{}'.format(trading_date[4:6], trading_date[6:], trading_date[:4])
+
+            # testing on a single file
+            df = pd.read_excel(zf.open(trading_day), sheet_name='MBS', skiprows=8, header=None)
+            df.replace(np.NaN, '', inplace=True)
+            df = df.loc[:df[df[1].str.contains('Indicates')].index.values[0] - 2]
+            df[0] = df[1].where(df[1].str.contains('PRICING TABLE')).fillna(method='ffill')
+            df[0] = df[0].str.replace('PRICING TABLE: AGENCY PASS-THRU \(SPECIFIED\) - ', '')
+
+            df[9] = df[1].where(df[1].isin(price_fields))
+            df[10] = df[1].where(df[9].isna()).fillna(method='ffill')
+
+            # split the df in 2
+            df1 = df[~(df[0] == 'ARMS/HYBRIDS')].drop(1, axis=1).copy()
+            df2 = df[df[0] == 'ARMS/HYBRIDS'].copy()
+
+            df1.columns = df1[df1[9].isna() & ~(df1[8] == '')].iloc[0]
+            df1.columns.values[0], df1.columns.values[8], df1.columns.values[9] = 'Mortgage Type', 'Measure', 'Agency'
+            df1 = df1[~(df1['Measure'].isna())]
+            df1['Date'] = trading_date
+
+            df2.drop([1, 7, 8], axis=1, inplace=True)
+            df2.columns = df2[df2[9].isna() & ~(df2[6] == '')].iloc[0]
+            df2.columns.values[0], df2.columns.values[6], df2.columns.values[7] = 'Mortgage Type', 'Measure', 'Agency'
+            df2 = df2[~(df2['Measure'].isna())]
+            df2['Date'] = trading_date
+
+            # check to see if filepath exists and append headers if they don't
+            if os.path.isfile('mbspricesfixed.csv'):
+                pass
+            else:
+                pd.DataFrame(df1.columns).transpose().to_csv('mbspricesfixed.csv', header=False, index=False, mode='a')
+
+            if os.path.isfile('mbspricesfloating.csv'):
+                pass
+            else:
+                pd.DataFrame(df2.columns).transpose().to_csv('mbspricesfloating.csv', header=False, index=False,
+                                                             mode='a')
+
+                # otherwise, append the file without  headers
+            df1.to_csv('mbspricesfixed.csv', header=False, index=False, mode='a')
+            df2.to_csv('mbspricesfloating.csv', header=False, index=False, mode='a')
+
 gettbaprices(directory)
