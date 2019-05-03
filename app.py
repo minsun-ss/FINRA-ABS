@@ -282,7 +282,7 @@ def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selec
                 ),
                 go.Scatter(
                     x=temp.index,
-                    y=temp['GNMA'].index,
+                    y=temp['GNMA'].values,
                     name='GNMA',
                     orientation='v'
                 ),
@@ -324,7 +324,7 @@ def build_cmo_price_figure(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
                 ),
                 go.Scatter(
                     x=temp.index,
-                    y=temp['GNMA'].index,
+                    y=temp['GNMA'].values,
                     name='GNMA',
                     orientation='v'
                 ),
