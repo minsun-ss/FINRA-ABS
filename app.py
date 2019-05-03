@@ -200,11 +200,11 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
 
     # now build the title
     if tradetype == 'trades_num':
-        chart_title = 'NUMBER OF TRADES, {}, {}'.format(mortgagetype, securitytype)
+        chart_title = 'NUMBER OF TRADES, {}, {}'.format(securitytype, mortgagetype)
     elif tradetype == 'trades_$':
-        chart_title = '$ TRADING VOLUME, {}, {}'.format(mortgagetype, securitytype)
+        chart_title = '$ TRADING VOLUME, {}, {}'.format(securitytype, mortgagetype)
     elif tradetype == 'trades_unique':
-        chart_title = 'UNIQUE CUSIPS TRADED, {}, {}'.format(mortgagetype, securitytype)
+        chart_title = 'UNIQUE CUSIPS TRADED, {}, {}'.format(securitytype, mortgagetype)
 
     # for those cases where both mortgage type and security type are TOTALS, just eliminate the duplicate
     if mortgagetype == securitytype:
@@ -257,7 +257,7 @@ def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selec
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[selected_coupon_type]
 
     # let's build title
-    chart_title = '{}, {}, {}, {}'.format(selected_measure, selected_asset_class_subtype, selected_coupon_type,
+    chart_title = '{}, {}, {}, Settlement Date: {}'.format(selected_measure, selected_asset_class_subtype, selected_coupon_type,
                                           selected_settlement_month)
 
     return {
@@ -306,7 +306,7 @@ def build_cmo_price_figure(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[cmo_vintage]
 
     # building the title
-    chart_title = '{}, {}, {}, {}'.format(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
+    chart_title = '{}, {}, {}, Vintage: {}'.format(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
 
     return {
             'data': [
