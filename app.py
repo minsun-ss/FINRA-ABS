@@ -11,7 +11,8 @@ df = pd.read_csv('agency.csv', header=0)
 df.replace('*', '', inplace=True)
 blah = df.loc[:, ((df.columns != 'Date') ^ (df.columns != 'AssetClass') ^ (df.columns !='AssetClassSubType'))].apply(pd.to_numeric)
 df = pd.concat((df['AssetClass'], df['AssetClassSubType'], blah, df['Date']), axis=1)
-agency_trades = df.groupby('Date').sum()
+df['Date'] = pd.to_datetime(df['Date'])
+#agency_trades = df.groupby('Date').sum()
 
 # data for prices
 df2 = pd.read_csv('tbaprices.csv', header=0)
@@ -19,11 +20,18 @@ df2 = pd.read_csv('tbaprices.csv', header=0)
 df2.replace('*', '', inplace=True)
 df2.replace('0', '', inplace=True)
 df2['Date'] = pd.to_datetime(df2['Date'])
-
-# convert coupons to numbs
 coupons = ['<=2.5', '3', '3.5', '4', '4.5', '5', '>5.0']
 df2[coupons] = df2[coupons].apply(pd.to_numeric)
 df2 = df2.replace(np.NaN, '')
+
+# data for cmo prices
+df3 = pd.read_csv('agencycmoprices.csv')
+df3.replace('*', '', inplace=True)
+df3.replace('0', '', inplace=True)
+df3['Date'] = pd.to_datetime(df3['Date'])
+vintages = ['Pre-2009', '2009-2013', '2014-2016', 'Post-2016']
+df3[vintages] = df3[vintages].apply(pd.to_numeric)
+df3 = df3.replace(np.NaN, '')
 
 # launch app
 app = dash.Dash(__name__)
@@ -92,7 +100,7 @@ def serve_layout():
                     {'label': 'Mortgage: Single Family 30Y', 'value': 'SINGLE FAMILY 30Y'},],
                     placeholder='Select Asset Subtype',
                     id='select asset class subtype',
-                    value='SINGLE FAMILY 15Y'),
+                    value='SINGLE FAMILY 30Y'),
             ], className='three columns'),
             html.Div([
                 dcc.Dropdown(options=[
@@ -115,12 +123,12 @@ def serve_layout():
                     {'label': 'Settlement Date: Current Month + 3', 'value': 'Current Month + 3'}, ],
                     placeholder='Select Settlement Month',
                     id='select settlement month',
-                    value='Current Month'),
+                    value='Current Month + 1'),
             ], className='three columns'),
         ], className='row'),
         dcc.Graph(id='agency tba prices'),
 
-        # now start the third pricing chart
+        # now start the agency CMO pricing chart
         html.H5(children='Agency CMO Prices (FINRA)'),
         html.Div([
             html.Div([
@@ -135,16 +143,41 @@ def serve_layout():
                     {'label': 'Standard Deviation', 'value': 'STANDARD DEVIATION'},
                     {'label': "Volume of Trades (Thousands)", 'value': "VOLUME OF TRADES (000'S)"},
                     {'label': 'Number of Trades', 'value': 'NUMBER OF TRADES'}],
-                    placeholder='Select TBA Measure',
+                    placeholder='Select Agency CMO Measure',
                     id='select cmo measure',
                     value='AVERAGE PRICE'),
+            ], className='three columns'),
+            html.Div([
+                dcc.Dropdown(options=[
+                    {'label': 'N/A', 'value': 'TOTAL'}],
+                    placeholder='Select Agency CMO Measure Subtype',
+                    id='select cmo measure subtype',
+                    value='TOTAL'),
+            ], className='three columns'),
+            html.Div([
+                dcc.Dropdown(options=[
+                    {'label': 'Mortgage Type: Agency CMO P&I', 'value': 'AGENCY CMO P&I'},
+                    {'label': 'Mortgage Type: Agency CMO IO/PO', 'value': 'AGENCY CMO IO/PO'},],
+                    placeholder='Select Agency CMO Measure Subtype',
+                    id='select cmo mortgage',
+                    value='AGENCY CMO P&I'),
+            ], className='three columns'),
+            html.Div([
+                dcc.Dropdown(options=[
+                    {'label': 'Vintage: Pre-2009', 'value': 'Pre-2009'},
+                    {'label': 'Vintage: 2009-2013', 'value': '2009-2013'},
+                    {'label': 'Vintage: 2014-2016', 'value': '2014-2016'},
+                    {'label': 'Vintage: Post-2016', 'value': 'Post-2016'},],
+                    placeholder='Select Agency CMO Measure Subtype',
+                    id='select cmo vintage',
+                    value='Post-2016'),
             ], className='three columns'),
         ], className='row'),
         dcc.Graph(id='agency cmo prices'),
     ])
 app.layout = serve_layout
 
-def build_figure(tradetype, securitytype, mortgagetype,):
+def build_main_figure(tradetype, securitytype, mortgagetype, ):
     # build temp df (starting backwards with mortgage type
     tempdf = df
     if mortgagetype == 'TOTAL': pass
@@ -178,28 +211,29 @@ def build_figure(tradetype, securitytype, mortgagetype,):
     if mortgagetype == securitytype:
         chart_title = chart_title.replace('TOTAL, TOTAL', 'TOTAL')
 
+
     return {
             'data': [
                 go.Scatter(
-                    x=agency_trades.index,
+                    x=tempdf.index,
                     y=tempdf[temp_columns[0]].values,
                     name='FNMA',
                     orientation='v'
                 ),
                 go.Scatter(
-                    x=agency_trades.index,
+                    x=tempdf.index,
                     y=tempdf[temp_columns[1]].values,
                     name='FHLMC',
                     orientation='v'
                 ),
                 go.Scatter(
-                    x=agency_trades.index,
+                    x=tempdf.index,
                     y=tempdf[temp_columns[2]].values,
                     name='GNMA',
                     orientation='v'
                 ),
                 go.Scatter(
-                    x=agency_trades.index,
+                    x=tempdf.index,
                     y=tempdf[temp_columns[3]].values,
                     name='Other',
                     orientation='v'
@@ -212,7 +246,7 @@ def build_figure(tradetype, securitytype, mortgagetype,):
         }
 
 
-def build_pricefigure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
+def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
     test = df2[df2['Measure'] == 'AVERAGE PRICE']
     test = test[test['AssetClassSubType'] == 'SINGLE FAMILY 30Y']
     test = test[test['SettlementDateChart'] == 'Current Month']
@@ -260,6 +294,48 @@ def build_pricefigure(selected_measure, selected_asset_class_subtype, selected_c
             )
         }
 
+def build_cmo_price_figure(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage):
+
+    # dealing with those situations where the callback dropdown has a measure2 that hasn't updated yet
+    if (cmo_measure == "VOLUME OF TRADES (000'S)") ^ (cmo_measure == "NUMBER OF TRADES"): pass
+    else: cmo_measure2 = 'TOTAL'
+
+    #building the dataframe
+    temp = df3[df3['Measure'] == cmo_measure]
+    temp = temp[temp['Measure2'] == cmo_measure2]
+    temp = temp[temp['MortgageType'] == cmo_mortgage]
+    temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[cmo_vintage]
+
+    # building the title
+    chart_title = '{}, {}, {}, {}'.format(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
+
+    return {
+            'data': [
+                go.Scatter(
+                    x=temp.index,
+                    y=temp['FNMA'].values,
+                    name='FNMA',
+                    orientation='v'
+                ),
+                go.Scatter(
+                    x=temp.index,
+                    y=temp['FHLMC'].values,
+                    name='FHLMC',
+                    orientation='v'
+                ),
+                go.Scatter(
+                    x=temp.index,
+                    y=temp['GNMA'].index,
+                    name='GNMA',
+                    orientation='v'
+                ),
+            ],
+            'layout': go.Layout(
+                height=600,
+                title=chart_title,
+            )
+        }
+
 @app.callback(
     Output('agency trades', 'figure'),
     [Input('trade type', 'value'),
@@ -267,8 +343,9 @@ def build_pricefigure(selected_measure, selected_asset_class_subtype, selected_c
      Input('mortgage type', 'value')]
 )
 def update_figure(selected_trade, selected_security, selected_mortgage):
-    return build_figure(selected_trade, selected_security, selected_mortgage)
+    return build_main_figure(selected_trade, selected_security, selected_mortgage)
 
+# callback to the agency TBA dropdowns
 @app.callback(
     Output('agency tba prices', 'figure'),
     [Input('select tba measure', 'value'),
@@ -278,7 +355,36 @@ def update_figure(selected_trade, selected_security, selected_mortgage):
      ]
 )
 def update_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
-    return build_pricefigure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month)
+    return build_tba_price_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type,
+                                  selected_settlement_month)
+
+@app.callback(
+    [Output('select cmo measure subtype', 'options'),
+     Output('agency cmo prices', 'figure'),
+     ],
+    [Input('select cmo measure', 'value'),
+     Input('select cmo measure subtype', 'value'),
+     Input('select cmo mortgage', 'value'),
+     Input('select cmo vintage', 'value')]
+)
+def update_dropdown(selected_cmo_measure, selected_cmo_measure_subtype, selected_cmo_mortgage, selected_cmo_vintage):
+    if (selected_cmo_measure == "VOLUME OF TRADES (000'S)") ^ (selected_cmo_measure == 'NUMBER OF TRADES'):
+        return [{'label': 'Total', 'value': 'TOTAL'},
+                {'label': 'Customer Buy', 'value': 'CUSTOMER BUY'},
+                {'label': 'Customer Sell', 'value': 'CUSTOMER SELL'},
+                {'label': '<= $1MM', 'value': '<= $1MM'},
+                {'label': '<= $10MM', 'value': '<= $10MM'},
+                {'label': '<= $100MM', 'value': '<= $100MM'},
+                {'label': '> $100MM', 'value': '> $100MM'},
+                ], build_cmo_price_figure(selected_cmo_measure, selected_cmo_measure_subtype,
+                                          selected_cmo_mortgage, selected_cmo_vintage)
+    else:
+        return [{'label': 'Total', 'value': 'TOTAL'}], build_cmo_price_figure(selected_cmo_measure,
+                                                                              selected_cmo_measure_subtype,
+                                                                              selected_cmo_mortgage,
+                                                                              selected_cmo_vintage)
+
+
 
 
 if __name__ == '__main__':
