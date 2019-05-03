@@ -12,7 +12,6 @@ df.replace('*', '', inplace=True)
 blah = df.loc[:, ((df.columns != 'Date') ^ (df.columns != 'AssetClass') ^ (df.columns !='AssetClassSubType'))].apply(pd.to_numeric)
 df = pd.concat((df['AssetClass'], df['AssetClassSubType'], blah, df['Date']), axis=1)
 df['Date'] = pd.to_datetime(df['Date'])
-#agency_trades = df.groupby('Date').sum()
 
 # data for prices
 df2 = pd.read_csv('tbaprices.csv', header=0)
@@ -41,7 +40,7 @@ server = app.server
 #build and serve layouts
 def serve_layout():
     return html.Div(children=[
-        html.H5(children='Agency Trading Volumes (FINRA)'),
+        html.H5(children='Agency Trading Volumes (FINRA) - see www.stuffofminsun.com for more details'),
         html.Div([
             html.Div([
                 dcc.Dropdown(options=[
