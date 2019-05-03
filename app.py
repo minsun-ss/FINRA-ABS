@@ -143,7 +143,7 @@ def serve_layout():
         dcc.Graph(id='agency tba prices'),
 
         # the agency MBS pricing chart
-        html.H5(children='Agency MBS Prices (FINRA)'),
+        html.H5(children='Agency MBS (Specified Pool) Prices (FINRA)'),
         html.Div([
             html.Div([
                 dcc.Dropdown(options=[
