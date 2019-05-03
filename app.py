@@ -13,7 +13,7 @@ blah = df.loc[:, ((df.columns != 'Date') ^ (df.columns != 'AssetClass') ^ (df.co
 df = pd.concat((df['AssetClass'], df['AssetClassSubType'], blah, df['Date']), axis=1)
 df['Date'] = pd.to_datetime(df['Date'])
 
-# data for prices
+# data for tba prices
 df2 = pd.read_csv('tbaprices.csv', header=0)
 # get rid of stars, get rid of 0s
 df2.replace('*', '', inplace=True)
@@ -22,6 +22,21 @@ df2['Date'] = pd.to_datetime(df2['Date'])
 coupons = ['<=2.5', '3', '3.5', '4', '4.5', '5', '>5.0']
 df2[coupons] = df2[coupons].apply(pd.to_numeric)
 df2 = df2.replace(np.NaN, '')
+
+# data for mbs prices
+dfmbsfixed = pd.read_csv('mbspricesfixed.csv')
+dfmbsfixed.replace('*', '', inplace=True)
+dfmbsfixed.replace('0', '', inplace=True)
+dfmbsfixed['Date'] = pd.to_datetime(dfmbsfixed['Date'])
+dfmbsfixed[dfmbsfixed.columns[1:8]] = dfmbsfixed[dfmbsfixed.columns[1:8]].apply(pd.to_numeric)
+dfmbsfixed.replace(np.NaN, '', inplace=True)
+
+dfmbsfloating = pd.read_csv('mbspricesfloating.csv')
+dfmbsfloating.replace('*', '', inplace=True)
+dfmbsfloating.replace('0', '', inplace=True)
+dfmbsfloating['Date'] = pd.to_datetime(dfmbsfloating['Date'])
+dfmbsfloating[dfmbsfloating.columns[1:6]] = dfmbsfloating[dfmbsfloating.columns[1:6]].apply(pd.to_numeric)
+dfmbsfloating.replace(np.NaN, '', inplace=True)
 
 # data for cmo prices
 df3 = pd.read_csv('agencycmoprices.csv')
@@ -74,7 +89,7 @@ def serve_layout():
         ], className='row'),
         dcc.Graph(id='agency trades'),
 
-        # now start the second pricing chart
+        # now start the agency tba pricing chart
         html.H5(children='Agency TBA Prices (FINRA)'),
         html.Div([
             html.Div([
@@ -127,6 +142,45 @@ def serve_layout():
         ], className='row'),
         dcc.Graph(id='agency tba prices'),
 
+        # the agency MBS pricing chart
+        html.H5(children='Agency MBS Prices (FINRA)'),
+        html.Div([
+            html.Div([
+                dcc.Dropdown(options=[
+                    {'label': 'Average Price', 'value': 'AVERAGE PRICE'},
+                    {'label': 'Weighted Average Price', 'value': 'WEIGHTED AVG. PRICE'},
+                    {'label': 'Average Price, Bottom 5 Trades', 'value': 'AVG. PRICE BOTTOM 5 TRADES'},
+                    {'label': 'Average Price, Top 5 Trades', 'value': 'AVG. PRICE TOP 5 TRADES'},
+                    {'label': '2nd Quartile Price', 'value': '2ND QUARTILE PRICE'},
+                    {'label': '3rd Quartile Price', 'value': '3RD QUARTILE PRICE'},
+                    {'label': '4th Quartile Price', 'value': '4TH QUARTILE PRICE'},
+                    {'label': 'Standard Deviation (Price)', 'value': 'STANDARD DEVIATION'},
+                    {'label': "Volume of Trades (Thousands)", 'value': "VOLUME OF TRADES (000'S)"},
+                    {'label': 'Number of Trades', 'value': 'NUMBER OF TRADES'}],
+                    placeholder='Select Agency MBS Measure',
+                    id='select mbs measure',
+                    value='AVERAGE PRICE')
+            ], className='one-third column'),
+            html.Div([
+                dcc.Dropdown(options=[
+                    {'label': 'Single Family 15Y', 'value': 'SINGLE FAMILY 15Y'},
+                    {'label': 'Single Family 30Y', 'value': 'SINGLE FAMILY 30Y'},
+                    {'label': 'ARMs/Hybrids', 'value': 'ARMS/HYBRIDS'},
+                ],
+                    placeholder='Select Agency MBS Mortgage',
+                    id='select mbs mortgage',
+                    value='SINGLE FAMILY 30Y')
+            ], className='one-third column'),
+            html.Div([
+                dcc.Dropdown(options=[
+                    {'label': 'N/A', 'value': '3'}, ],
+                    placeholder='Select Agency MBS Coupon',
+                    id='select mbs coupon',
+                    value='3')
+            ], className='one-third column'),
+        ], className='row'),
+        dcc.Graph(id='agency mbs prices'),
+
         # now start the agency CMO pricing chart
         html.H5(children='Agency CMO Prices (FINRA)'),
         html.Div([
@@ -139,7 +193,7 @@ def serve_layout():
                     {'label': '2nd Quartile Price', 'value': '2ND QUARTILE PRICE'},
                     {'label': '3rd Quartile Price', 'value': '3RD QUARTILE PRICE'},
                     {'label': '4th Quartile Price', 'value': '4TH QUARTILE PRICE'},
-                    {'label': 'Standard Deviation', 'value': 'STANDARD DEVIATION'},
+                    {'label': 'Standard Deviation (Price)', 'value': 'STANDARD DEVIATION'},
                     {'label': "Volume of Trades (Thousands)", 'value': "VOLUME OF TRADES (000'S)"},
                     {'label': 'Number of Trades', 'value': 'NUMBER OF TRADES'}],
                     placeholder='Select Agency CMO Measure',
@@ -293,6 +347,55 @@ def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selec
             )
         }
 
+def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon):
+
+    # determine mortgage type:
+    if selected_mortgage == 'ARMS/HYBRIDS': temp = dfmbsfloating
+    else: temp = dfmbsfixed
+
+    # check to see if coupon and mortgage in conflict
+    if (selected_mortgage == 'ARMS/HYBRIDS') and (selected_coupon in dfmbsfixed.columns[1:8]):
+        return {}
+    elif (selected_mortgage != 'ARMS/HYBRIDS') and (selected_coupon in dfmbsfloating.columns[1:8]):
+        return {}
+
+
+    # then filter df
+    temp = temp[temp['Measure'] == selected_measure]
+    temp = temp[temp['Mortgage Type'] == selected_mortgage]
+    temp = temp.set_index(['Date', 'Agency']).unstack(level=1)
+    temp = temp[selected_coupon]
+
+    # build title
+    chart_title = '{}, {}, {}'.format(selected_measure, selected_mortgage, selected_coupon)
+
+    return {
+            'data': [
+                go.Scatter(
+                    x=temp.index,
+                    y=temp['FNMA'].values,
+                    name='FNMA',
+                    orientation='v'
+                ),
+                go.Scatter(
+                    x=temp.index,
+                    y=temp['FHLMC'].values,
+                    name='FHLMC',
+                    orientation='v'
+                ),
+                go.Scatter(
+                    x=temp.index,
+                    y=temp['GNMA'].values,
+                    name='GNMA',
+                    orientation='v'
+                ),
+            ],
+            'layout': go.Layout(
+                height=600,
+                title=chart_title,
+            )
+        }
+
 def build_cmo_price_figure(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage):
 
     # dealing with those situations where the callback dropdown has a measure2 that hasn't updated yet
@@ -383,7 +486,19 @@ def update_dropdown(selected_cmo_measure, selected_cmo_measure_subtype, selected
                                                                               selected_cmo_mortgage,
                                                                               selected_cmo_vintage)
 
-
+@app.callback(
+    [Output('select mbs coupon', 'options'),
+     Output('agency mbs prices', 'figure')],
+    [Input('select mbs measure', 'value'),
+     Input('select mbs mortgage', 'value'),
+     Input('select mbs coupon', 'value')
+     ]
+)
+def update_dropdown(selected_measure, selected_mortgage, selected_coupon):
+    if (selected_mortgage == 'ARMS/HYBRIDS'):
+        return [{'label': i, 'value': i} for i in dfmbsfloating.columns[1:6]], build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon)
+    else:
+        return [{'label': i, 'value': i} for i in dfmbsfixed.columns[1:8]], build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon)
 
 
 if __name__ == '__main__':
