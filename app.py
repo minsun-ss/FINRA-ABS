@@ -14,7 +14,7 @@ startdate = (datetime.now()-timedelta(days=365)).strftime('%Y%m%d')
 
 
 # this is the dynamodb part
-dynamodb = boto3.resource('dynamodb')
+dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
 table = dynamodb.Table('agency_trades')
 response = table.scan(FilterExpression=Attr('Date').gt(startdate))
 items = response['Items']
