@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 import os
 
 session = boto3.Session(region_name='us-east-1',
-                        aws_access_key_id='AKIAIWR2B3N2CLZBEETA',
-                        aws_secret_access_key='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)')
+                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
 dynamodb = session.resource('dynamodb')
 
 #start date for the charts (1 year rolling)
@@ -20,7 +20,7 @@ startdate = (datetime.now()-timedelta(days=365)).strftime('%Y%m%d')
 
 
 # this is the dynamodb part
-dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
+#dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
 table = dynamodb.Table('agency_trades')
 response = table.scan(FilterExpression=Attr('Date').gt(startdate))
 items = response['Items']
