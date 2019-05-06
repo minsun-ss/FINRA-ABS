@@ -5,45 +5,64 @@ from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
+import boto3
+from boto3.dynamodb.conditions import Key, Attr
+from datetime import datetime, timedelta
 
-# data for trading volumes
-df = pd.read_csv('agency.csv', header=0)
+#start date for the charts (1 year rolling)
+startdate = (datetime.now()-timedelta(days=365)).strftime('%Y%m%d')
+
+
+# this is the dynamodb part
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('agency_trades')
+response = table.scan(FilterExpression=Attr('Date').gt(startdate))
+items = response['Items']
+
+# data for all agency trading volumes using amazon dynamodb
+df = pd.DataFrame(items)
 df.replace('*', '', inplace=True)
-blah = df.loc[:, ((df.columns != 'Date') ^ (df.columns != 'AssetClass') ^ (df.columns !='AssetClassSubType'))].apply(pd.to_numeric)
-df = pd.concat((df['AssetClass'], df['AssetClassSubType'], blah, df['Date']), axis=1)
-df['Date'] = pd.to_datetime(df['Date'])
+df[df.columns[4:]] = df[df.columns[4:]].apply(pd.to_numeric)
+df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d')
 
 # data for tba prices
-df2 = pd.read_csv('tbaprices.csv', header=0)
+dftba = pd.read_csv('tbaprices.csv', header=0)
 # get rid of stars, get rid of 0s
-df2.replace('*', '', inplace=True)
-df2.replace('0', '', inplace=True)
-df2['Date'] = pd.to_datetime(df2['Date'])
+dftba.replace('*', '', inplace=True)
+dftba.replace('0', '', inplace=True)
+dftba.replace('0.0', '', inplace=True)
+dftba['Date'] = pd.to_datetime(dftba['Date'], format='%Y%m%d')
 coupons = ['<=2.5', '3', '3.5', '4', '4.5', '5', '>5.0']
-df2[coupons] = df2[coupons].apply(pd.to_numeric)
-df2 = df2.replace(np.NaN, '')
+dftba[coupons] = dftba[coupons].apply(pd.to_numeric)
+dftba = dftba.replace(np.NaN, '')
 
 # data for mbs prices
 dfmbsfixed = pd.read_csv('mbspricesfixed.csv')
 dfmbsfixed.replace('*', '', inplace=True)
 dfmbsfixed.replace('0', '', inplace=True)
-dfmbsfixed['Date'] = pd.to_datetime(dfmbsfixed['Date'])
+dfmbsfixed.replace('0.0', '', inplace=True)
+dfmbsfixed['Date'] = pd.to_datetime(dfmbsfixed['Date'], format='%Y%m%d')
 dfmbsfixed[dfmbsfixed.columns[1:8]] = dfmbsfixed[dfmbsfixed.columns[1:8]].apply(pd.to_numeric)
 dfmbsfixed.replace(np.NaN, '', inplace=True)
 
 dfmbsfloating = pd.read_csv('mbspricesfloating.csv')
 dfmbsfloating.replace('*', '', inplace=True)
 dfmbsfloating.replace('0', '', inplace=True)
-dfmbsfloating['Date'] = pd.to_datetime(dfmbsfloating['Date'])
+dfmbsfloating.replace('0.0', '', inplace=True)
+dfmbsfloating['Date'] = pd.to_datetime(dfmbsfloating['Date'], format='%Y%m%d')
 dfmbsfloating[dfmbsfloating.columns[1:6]] = dfmbsfloating[dfmbsfloating.columns[1:6]].apply(pd.to_numeric)
 dfmbsfloating.replace(np.NaN, '', inplace=True)
 
 # data for cmo prices
+table = dynamodb.Table('agencycmo_prices')
+response = table.scan(FilterExpression=Attr('Date').gt(startdate))
+items = response['Items']
 df3 = pd.read_csv('agencycmoprices.csv')
 df3.replace('*', '', inplace=True)
 df3.replace('0', '', inplace=True)
-df3['Date'] = pd.to_datetime(df3['Date'])
-vintages = ['Pre-2009', '2009-2013', '2014-2016', 'Post-2016']
+df3.replace('0.0', '', inplace=True)
+df3['Date'] = pd.to_datetime(df3['Date'], format='%Y%m%d')
+vintages = ['PRE-2009', '2009-2013', '2014-2016', 'POST-2016']
 df3[vintages] = df3[vintages].apply(pd.to_numeric)
 df3 = df3.replace(np.NaN, '')
 
@@ -217,13 +236,13 @@ def serve_layout():
             ], className='three columns'),
             html.Div([
                 dcc.Dropdown(options=[
-                    {'label': 'Vintage: Pre-2009', 'value': 'Pre-2009'},
+                    {'label': 'Vintage: Pre-2009', 'value': 'PRE-2009'},
                     {'label': 'Vintage: 2009-2013', 'value': '2009-2013'},
                     {'label': 'Vintage: 2014-2016', 'value': '2014-2016'},
-                    {'label': 'Vintage: Post-2016', 'value': 'Post-2016'},],
+                    {'label': 'Vintage: Post-2016', 'value': 'POST-2016'},],
                     placeholder='Select Agency CMO Measure Subtype',
                     id='select cmo vintage',
-                    value='Post-2016'),
+                    value='POST-2016'),
             ], className='three columns'),
         ], className='row'),
         dcc.Graph(id='agency cmo prices'),
@@ -271,25 +290,30 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
                     x=tempdf.index,
                     y=tempdf[temp_columns[0]].values,
                     name='FNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(0, 0, 255)')
+
                 ),
                 go.Scatter(
                     x=tempdf.index,
                     y=tempdf[temp_columns[1]].values,
                     name='FHLMC',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(250, 135, 117)')
                 ),
                 go.Scatter(
                     x=tempdf.index,
                     y=tempdf[temp_columns[2]].values,
                     name='GNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(205, 52, 181)')
                 ),
                 go.Scatter(
                     x=tempdf.index,
                     y=tempdf[temp_columns[3]].values,
                     name='Other',
-                    orientation='v'
+                    orientation='v',
+                    marker = dict(color='rgb(255, 215, 0)')
                 ),
             ],
             'layout': go.Layout(
@@ -300,12 +324,12 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
 
 
 def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
-    test = df2[df2['Measure'] == 'AVERAGE PRICE']
+    test = dftba[dftba['Measure'] == 'AVERAGE PRICE']
     test = test[test['AssetClassSubType'] == 'SINGLE FAMILY 30Y']
     test = test[test['SettlementDateChart'] == 'Current Month']
 
     # let's start with measure:
-    temp = df2[df2['Measure'] == selected_measure]
+    temp = dftba[dftba['Measure'] == selected_measure]
     temp = temp[temp['AssetClassSubType'] == selected_asset_class_subtype]
     temp = temp[temp['SettlementDateChart'] == selected_settlement_month]
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[selected_coupon_type]
@@ -320,25 +344,29 @@ def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selec
                     x=temp.index,
                     y=temp['FNMA'].values,
                     name='FNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(0, 0, 255)')
                 ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['FNMA/UMBS'].values,
                     name='FNMA/UMBS',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(255, 215, 0)')
                 ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['FHLMC'].values,
                     name='FHLMC',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(250, 135, 117)')
                 ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['GNMA'].values,
                     name='GNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(205, 52, 181)')
                 ),
             ],
             'layout': go.Layout(
@@ -375,19 +403,22 @@ def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon)
                     x=temp.index,
                     y=temp['FNMA'].values,
                     name='FNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(0, 0, 255)')
                 ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['FHLMC'].values,
                     name='FHLMC',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(250, 135, 117)')
                 ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['GNMA'].values,
                     name='GNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(205, 52, 181)')
                 ),
             ],
             'layout': go.Layout(
@@ -417,19 +448,22 @@ def build_cmo_price_figure(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
                     x=temp.index,
                     y=temp['FNMA'].values,
                     name='FNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(0, 0, 255)')
                 ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['FHLMC'].values,
                     name='FHLMC',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(250, 135, 117)')
                 ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['GNMA'].values,
                     name='GNMA',
-                    orientation='v'
+                    orientation='v',
+                    marker=dict(color='rgb(205, 52, 181)')
                 ),
             ],
             'layout': go.Layout(

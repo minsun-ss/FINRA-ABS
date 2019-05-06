@@ -6,7 +6,7 @@ import numpy as np
 # takes a zip list of FINRA ABS trading files, cleans them up and spits them out into 2 raw CSV files.
 directory = os.fsencode('data')
 
-def getTradingVolumes(directory):
+def get_trading_volumes(directory):
     for zfile in os.listdir(directory):
         filename = os.fsdecode(zfile)
         zf = zipfile.ZipFile('data/' + filename)
@@ -19,7 +19,7 @@ def getTradingVolumes(directory):
             trading_date = trading_day.split('-')[1].replace('.xlsx', '')
 
             # should i fix trading date?
-            trading_date = '{}/{}/{}'.format(trading_date[4:6], trading_date[6:], trading_date[:4])
+            trading_date = '{}{}{}'.format(trading_date[:4], trading_date[4:6], trading_date[6:])
 
             # testing on a single file
             df = pd.read_excel(zf.open(trading_day), sheet_name='TradingActivity', skiprows=11,
@@ -67,7 +67,7 @@ def getTradingVolumes(directory):
             agency_df.to_csv('agency.csv', header=False, index=False, mode='a')
             nonagency_df.to_csv('nonagency.csv', header=False, index=False, mode='a')
 
-def gettbaprices(directory):
+def get_tba_prices(directory):
     for zfile in os.listdir(directory):
         filename = os.fsdecode(zfile)
         zf = zipfile.ZipFile('data/' + filename)
@@ -87,13 +87,22 @@ def gettbaprices(directory):
             trading_date = trading_day.split('-')[1].replace('.xlsx', '')
 
             # should i fix trading date?
-            trading_date = '{}/{}/{}'.format(trading_date[4:6], trading_date[6:], trading_date[:4])
+            trading_date = '{}{}{}'.format(trading_date[:4], trading_date[4:6], trading_date[6:])
 
             # build monthlist:
-            current_month = int(trading_date[0:2])
-            chart_month_list = {current_month: 'Current Month', (current_month + 1) % 12: 'Current Month + 1',
-                                (current_month + 2) % 12: 'Current Month + 2',
-                                (current_month + 3) % 12: 'Current Month + 3'}
+            current_month = int(trading_date[4:6])
+            current_month_plus_one = (current_month + 1) % 12
+            current_month_plus_two = (current_month + 2) % 12
+            current_month_plus_three = (current_month + 3) % 12
+            if current_month_plus_one == 0:
+                current_month_plus_one = 12
+            elif current_month_plus_two == 0:
+                current_month_plus_two = 12
+            elif current_month_plus_three == 0:
+                current_month_plus_three = 12
+            chart_month_list = {current_month: 'Current Month', current_month_plus_one: 'Current Month + 1',
+                                current_month_plus_two: 'Current Month + 2',
+                                current_month_plus_three: 'Current Month + 3'}
 
             # start reading stuff in
             df = pd.read_excel(zf.open(trading_day), sheet_name='TBA', skiprows=8, header=None)
@@ -130,7 +139,7 @@ def gettbaprices(directory):
             df.to_csv('tbaprices.csv', header=False, index=False, mode='a')
 
 
-def get_agencycmo_prices(directory):
+def get_agency_cmo_prices(directory):
     for zfile in os.listdir(directory):
         filename = os.fsdecode(zfile)
         zf = zipfile.ZipFile('data/' + filename)
@@ -150,10 +159,10 @@ def get_agencycmo_prices(directory):
             trading_date = trading_day.split('-')[1].replace('.xlsx', '')
 
             # should i fix trading date?
-            trading_date = '{}/{}/{}'.format(trading_date[4:6], trading_date[6:], trading_date[:4])
+            trading_date = '{}{}{}'.format(trading_date[:4], trading_date[4:6], trading_date[6:])
 
             # build monthlist:
-            current_month = int(trading_date[0:2])
+            current_month = int(trading_date[4:6])
             chart_month_list = {current_month: 'Current Month', (current_month + 1) % 12: 'Current Month + 1',
                                 (current_month + 2) % 12: 'Current Month + 2',
                                 (current_month + 3) % 12: 'Current Month + 3'}
@@ -169,13 +178,16 @@ def get_agencycmo_prices(directory):
             df[7] = df[1].where(~((df[1].isin(price_fields) ^ (df[1].isin(price_fields_subcategory))))).fillna(
                 method='ffill')
             df[8] = df[1].where(df[1].str.contains('PRICING TABLE')).fillna(method='ffill')
+
+            # future proofing just a bit by not hard coding the vintage years.
+            vintage_years = df.loc[2, [2, 3, 4, 5]].values
             df = df[~(df[1] == df[7])]
             df.drop(1, axis=1, inplace=True)
             df[8] = df[8].str.replace('PRICING TABLE: ', '')
             df[8] = df[8].str.replace(' - BY DEAL VINTAGE', '')
-            df.columns = ['Measure', 'Pre-2009', '2009-2013', '2014-2016', 'Post-2016', 'Measure2', 'Agency',
+            df.columns = ['Measure', vintage_years[0], vintage_years[1], vintage_years[2], vintage_years[3], 'Measure2',
+                          'Agency',
                           'MortgageType']
-
             df.Measure2 = df.Measure2.fillna('TOTAL')
             df['Date'] = trading_date
 
@@ -187,7 +199,7 @@ def get_agencycmo_prices(directory):
 
             df.to_csv('agencycmoprices.csv', header=False, index=False, mode='a')
 
-def get_agencymbs_prices(directory):
+def get_agency_mbs_prices(directory):
     for zfile in os.listdir(directory):
         filename = os.fsdecode(zfile)
         zf = zipfile.ZipFile('data/' + filename)
@@ -204,7 +216,7 @@ def get_agencymbs_prices(directory):
             trading_date = trading_day.split('-')[1].replace('.xlsx', '')
 
             # should i fix trading date?
-            trading_date = '{}/{}/{}'.format(trading_date[4:6], trading_date[6:], trading_date[:4])
+            trading_date = '{}{}{}'.format(trading_date[:4], trading_date[4:6], trading_date[6:])
 
             # testing on a single file
             df = pd.read_excel(zf.open(trading_day), sheet_name='MBS', skiprows=8, header=None)
@@ -247,4 +259,4 @@ def get_agencymbs_prices(directory):
             df1.to_csv('mbspricesfixed.csv', header=False, index=False, mode='a')
             df2.to_csv('mbspricesfloating.csv', header=False, index=False, mode='a')
 
-gettbaprices(directory)
+get_tba_prices(directory)
