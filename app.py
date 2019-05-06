@@ -8,6 +8,7 @@ import numpy as np
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime, timedelta
+import os
 
 session = boto3.Session(region_name='us-east-1',
                         aws_access_key_id=os.environ['S3_KEY'],
