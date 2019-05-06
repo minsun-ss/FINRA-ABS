@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 import os
 
 session = boto3.Session(region_name='us-east-1',
-                        aws_access_key_id=os.environ['S3_KEY'],
-                        aws_secret_access_key=os.environ['S3_SECRET'])
+                        aws_access_key_id=AKIAIWR2B3N2CLZBEETA,
+                        aws_secret_access_key=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)
 dynamodb = session.resource('dynamodb')
 
 #start date for the charts (1 year rolling)
