@@ -10,11 +10,11 @@ from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime, timedelta
 import os
 
-session = boto3.Session(region_name='us-east-1',
-                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
-dynamodb = session.resource('dynamodb')
-#dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
+#session = boto3.Session(region_name='us-east-1',
+#                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+#                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+#dynamodb = session.resource('dynamodb')
+dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
 
 #start date for the charts (1 year rolling)
 startdate = (datetime.now()-timedelta(days=365)).strftime('%Y%m%d')
@@ -52,18 +52,30 @@ dfmbsfixed['Date'] = pd.to_datetime(dfmbsfixed['Date'], format='%Y%m%d')
 dfmbsfixed[dfmbsfixed.columns[1:8]] = dfmbsfixed[dfmbsfixed.columns[1:8]].apply(pd.to_numeric)
 dfmbsfixed.replace(np.NaN, '', inplace=True)
 
-dfmbsfloating = pd.read_csv('mbspricesfloating.csv')
+
+table = dynamodb.Table('agencymbsfloating_prices')
+response = table.scan(FilterExpression=Attr('Date').gt('20190101'))
+items = response['Items']
+dfmbsfloating = pd.DataFrame(items)
 dfmbsfloating.replace('*', '', inplace=True)
 dfmbsfloating.replace('0', '', inplace=True)
 dfmbsfloating.replace('0.0', '', inplace=True)
 dfmbsfloating['Date'] = pd.to_datetime(dfmbsfloating['Date'], format='%Y%m%d')
-dfmbsfloating[dfmbsfloating.columns[1:6]] = dfmbsfloating[dfmbsfloating.columns[1:6]].apply(pd.to_numeric)
+dfmbsfloating[dfmbsfloating.columns[0:5]] = dfmbsfloating[dfmbsfloating.columns[0:5]].apply(pd.to_numeric)
 dfmbsfloating.replace(np.NaN, '', inplace=True)
 
+#dfmbsfloating = pd.read_csv('mbspricesfloating.csv')
+#dfmbsfloating.replace('*', '', inplace=True)
+#dfmbsfloating.replace('0', '', inplace=True)
+#dfmbsfloating.replace('0.0', '', inplace=True)
+#dfmbsfloating['Date'] = pd.to_datetime(dfmbsfloating['Date'], format='%Y%m%d')
+#dfmbsfloating[dfmbsfloating.columns[1:6]] = dfmbsfloating[dfmbsfloating.columns[1:6]].apply(pd.to_numeric)
+#dfmbsfloating.replace(np.NaN, '', inplace=True)
+
 # data for cmo prices
-table = dynamodb.Table('agencycmo_prices')
-response = table.scan(FilterExpression=Attr('Date').gt(startdate))
-items = response['Items']
+#table = dynamodb.Table('agencycmo_prices')
+#response = table.scan(FilterExpression=Attr('Date').gt(startdate))
+#items = response['Items']
 df3 = pd.read_csv('agencycmoprices.csv')
 df3.replace('*', '', inplace=True)
 df3.replace('0', '', inplace=True)
@@ -391,7 +403,7 @@ def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon)
     # check to see if coupon and mortgage in conflict
     if (selected_mortgage == 'ARMS/HYBRIDS') and (selected_coupon in dfmbsfixed.columns[1:8]):
         return {}
-    elif (selected_mortgage != 'ARMS/HYBRIDS') and (selected_coupon in dfmbsfloating.columns[1:8]):
+    elif (selected_mortgage != 'ARMS/HYBRIDS') and (selected_coupon in dfmbsfloating.columns[0:5]):
         return {}
 
 
@@ -400,6 +412,9 @@ def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon)
     temp = temp[temp['Mortgage Type'] == selected_mortgage]
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)
     temp = temp[selected_coupon]
+
+    print(selected_measure, selected_mortgage, selected_coupon)
+    print(temp.head())
 
     # build title
     chart_title = '{}, {}, {}'.format(selected_measure, selected_mortgage, selected_coupon)
