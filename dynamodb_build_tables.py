@@ -1,6 +1,9 @@
 import boto3
 
-dynamodb = boto3.resource('dynamodb')
+session = boto3.Session(region_name='us-east-1',
+                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+dynamodb = session.resource('dynamodb')
 
 #build tables
 def buildAgencyTrades():
