@@ -13,7 +13,7 @@ session = boto3.Session(region_name='us-east-1',
 dynamodb = session.resource('dynamodb')
 
 #start date for the charts (6 months rolling)
-startdate = (datetime.now()-timedelta(days=182)).strftime('%Y%m%d')
+startdate = (datetime.now()-timedelta(days=60)).strftime('%Y%m%d')
 
 # helper for price tables
 def get_prices(table_name, start_date):
