@@ -10,11 +10,11 @@ from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime, timedelta
 import os
 
-#session = boto3.Session(region_name='us-east-1',
-#                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-#                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
-#dynamodb = session.resource('dynamodb')
-dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
+session = boto3.Session(region_name='us-east-1',
+                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+dynamodb = session.resource('dynamodb')
+#dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
 
 #start date for the charts (6 months rolling)
 startdate = (datetime.now()-timedelta(days=182)).strftime('%Y%m%d')
@@ -46,7 +46,7 @@ df[df.columns[4:]] = df[df.columns[4:]].apply(pd.to_numeric)
 df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d')
 
 # data for tba prices
-dftba = pd.DataFrame(get_prices('TBA', '20190101'))
+dftba = pd.DataFrame(get_prices('TBA', startdate))
 dftba.replace('*', '', inplace=True)
 dftba.replace('0', '', inplace=True)
 dftba.replace('0.0', '', inplace=True)
@@ -82,7 +82,6 @@ dfmbsfixed['Date'] = pd.to_datetime(dfmbsfixed['Date'], format='%Y%m%d')
 dfmbsfixed[dfmbsfixed.columns[0:7]] = dfmbsfixed[dfmbsfixed.columns[0:7]].apply(pd.to_numeric)
 dfmbsfixed.replace(np.NaN, '', inplace=True)
 
-
 dfmbsfloating = pd.DataFrame(get_prices('MBSFLOATING', startdate))
 dfmbsfloating.replace('*', '', inplace=True)
 dfmbsfloating.replace('0', '', inplace=True)
@@ -101,18 +100,6 @@ dfmbsfloating.replace(np.NaN, '', inplace=True)
 #dfmbsfloating.replace(np.NaN, '', inplace=True)
 
 # data for cmo prices
-#table = dynamodb.Table('agencycmo_prices')
-#response = table.scan(FilterExpression=Attr('Date').gt(startdate))
-#items = response['Items']
-#df3 = pd.read_csv('agencycmoprices.csv')
-#df3.replace('*', '', inplace=True)
-#df3.replace('0', '', inplace=True)
-#df3.replace('0.0', '', inplace=True)
-#df3['Date'] = pd.to_datetime(df3['Date'], format='%Y%m%d')
-#vintages = ['PRE-2009', '2009-2013', '2014-2016', 'POST-2016']
-#df3[vintages] = df3[vintages].apply(pd.to_numeric)
-#df3 = df3.replace(np.NaN, '')
-
 df3 = pd.DataFrame(get_prices('CMO', startdate))
 df3.replace('*', '', inplace=True)
 df3.replace('0', '', inplace=True)
