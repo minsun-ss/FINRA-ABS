@@ -1,5 +1,6 @@
 import boto3
 import pandas as pd
+import os
 
 session = boto3.Session(region_name='us-east-1',
                         aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
