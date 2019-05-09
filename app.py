@@ -271,12 +271,11 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
 
 def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
 
-    print(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month)
     # let's start with measure:
     temp = tba_prices[tba_prices['Measure'] == selected_measure]
     temp = temp[temp['AssetClassSubType'] == selected_asset_class_subtype]
     temp = temp[temp['SettlementDateChart'] == selected_settlement_month]
-    print(temp.head())
+
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[selected_coupon_type]
 
     # let's build title
