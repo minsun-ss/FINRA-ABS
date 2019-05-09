@@ -270,29 +270,22 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
 
 
 def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
-    test = tba_prices[tba_prices['Measure'] == 'AVERAGE PRICE']
-    test = test[test['AssetClassSubType'] == 'SINGLE FAMILY 30Y']
-    test = test[test['SettlementDateChart'] == 'Current Month']
 
+    print(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month)
     # let's start with measure:
     temp = tba_prices[tba_prices['Measure'] == selected_measure]
     temp = temp[temp['AssetClassSubType'] == selected_asset_class_subtype]
     temp = temp[temp['SettlementDateChart'] == selected_settlement_month]
+    print(temp.head())
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[selected_coupon_type]
 
     # let's build title
     chart_title = '{}, {}, {}, Settlement Date: {}'.format(selected_measure, selected_asset_class_subtype, selected_coupon_type,
                                           selected_settlement_month)
 
-    return {
+    if 'FNMA' not in temp.columns:
+        return {
             'data': [
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['FNMA'].values,
-                    name='FNMA',
-                    orientation='v',
-                    marker=dict(color='rgb(0, 0, 255)')
-                ),
                 go.Scatter(
                     x=temp.index,
                     y=temp['FNMA/UMBS'].values,
@@ -320,6 +313,43 @@ def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selec
                 title=chart_title,
             )
         }
+    else:
+        return {
+                'data': [
+                    go.Scatter(
+                        x=temp.index,
+                        y=temp['FNMA'].values,
+                        name='FNMA',
+                        orientation='v',
+                        marker=dict(color='rgb(0, 0, 255)')
+                    ),
+                    go.Scatter(
+                        x=temp.index,
+                        y=temp['FNMA/UMBS'].values,
+                        name='FNMA/UMBS',
+                        orientation='v',
+                        marker=dict(color='rgb(255, 215, 0)')
+                    ),
+                    go.Scatter(
+                        x=temp.index,
+                        y=temp['FHLMC'].values,
+                        name='FHLMC',
+                        orientation='v',
+                        marker=dict(color='rgb(250, 135, 117)')
+                    ),
+                    go.Scatter(
+                        x=temp.index,
+                        y=temp['GNMA'].values,
+                        name='GNMA',
+                        orientation='v',
+                        marker=dict(color='rgb(205, 52, 181)')
+                    ),
+                ],
+                'layout': go.Layout(
+                    height=600,
+                    title=chart_title,
+                )
+            }
 
 def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon):
 

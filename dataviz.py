@@ -46,7 +46,6 @@ def get_trades():
 
 # data for tba prices
 def get_tba_prices():
-
     dftba = pd.DataFrame(get_prices('TBA', startdate))
     dftba.replace('*', '', inplace=True)
     dftba.replace('0', '', inplace=True)
