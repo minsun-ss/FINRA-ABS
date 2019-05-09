@@ -14,7 +14,8 @@ def check():
     print('This job is run every three minutes.')
 
 @sched.scheduled_job('interval', minutes=3)
-def timed_job(check()):
+def timed_job():
+    print('This job is run every three minutes.')
 
 @sched.scheduled_job('cron', day=5)
 def scheduled_job():
