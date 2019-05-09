@@ -19,22 +19,6 @@ def get_prices_and_volumes(path):
         extract_mbs_prices(zf)
     return True
 
-def get_prices_and_volumes_default():
-    # takes a zip list of FINRA ABS trading files, cleans them up and spits them out into multiple files to
-    # dump into DynamoDB
-    print('Extracting data from FINRA files...')
-    #directory = os.fsencode('data')
-
-    for zfile in os.listdir(directory):
-        filename = os.fsdecode(zfile)
-        zf = zipfile.ZipFile('data/' + filename)
-
-        extract_trading_volumes(zf)
-        extract_tba_prices(zf)
-        extract_cmo_prices(zf)
-        extract_mbs_prices(zf)
-    return True
-
 def extract_trading_volumes(zf):
     # build namelist of specific files I need
     star_list = [i for i in zf.namelist() if 'STAR' in i]
@@ -81,12 +65,14 @@ def extract_trading_volumes(zf):
         if os.path.isfile('csv/tradingvolumes_agency.csv'):
             pass
         else:
-            pd.DataFrame(agency_df.columns).transpose().to_csv('csv/tradingvolumes_agency.csv', header=False, index=False, mode='a')
+            pd.DataFrame(agency_df.columns).transpose().to_csv('csv/tradingvolumes_agency.csv',
+                                                               header=False, index=False, mode='a')
 
         if os.path.isfile('csv/trading_volumes_nonagency.csv'):
             pass
         else:
-            pd.DataFrame(nonagency_df.columns).transpose().to_csv('csv/tradingvolumes_nonagency.csv', header=False, index=False, mode='a')
+            pd.DataFrame(nonagency_df.columns).transpose().to_csv('csv/tradingvolumes_nonagency.csv',
+                                                                  header=False, index=False, mode='a')
 
             # otherwise, append the file without  headers
         agency_df.to_csv('csv/tradingvolumes_agency.csv', header=False, index=False, mode='a')
@@ -268,6 +254,6 @@ def extract_mbs_prices(zf):
             pd.DataFrame(df2.columns).transpose().to_csv('csv/prices_mbsfloating.csv', header=False, index=False,
                                                          mode='a')
 
-            # otherwise, append the file without  headers
+            # otherwise, append the file without headers
         df1.to_csv('csv/prices_mbsfixed.csv', header=False, index=False, mode='a')
         df2.to_csv('csv/prices_mbsfloating.csv', header=False, index=False, mode='a')
