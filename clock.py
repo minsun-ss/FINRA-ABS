@@ -16,10 +16,12 @@ def check():
 @sched.scheduled_job('interval', minutes=3)
 def timed_job():
     print('This job is run every three minutes.')
+    sys.stdout.flush()
 
 @sched.scheduled_job('cron', day=5)
 def scheduled_job():
     q.enqueue(extractMonthlyData.run_extraction())
     print('This job is run on the 5th of every month.')
+    sys.stdout.flush()
 
 sched.start()
