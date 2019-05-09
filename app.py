@@ -1,120 +1,21 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 import plotly.graph_objs as go
-import pandas as pd
-import numpy as np
-import boto3
-from boto3.dynamodb.conditions import Key, Attr
-from datetime import datetime, timedelta
-import os
+import dataviz as dv
 
-session = boto3.Session(region_name='us-east-1',
-                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
-dynamodb = session.resource('dynamodb')
-#dynamodb = boto3.resource(service_name='dynamodb', region_name='us-east-1')
-
-#start date for the charts (6 months rolling)
-startdate = (datetime.now()-timedelta(days=182)).strftime('%Y%m%d')
-
-def get_prices(table_name, start_date):
-    table = dynamodb.Table('agency_prices_alt')
-    response = table.query(
-        KeyConditionExpression=Key('AssetID').eq(table_name) & Key('UniqueID').gt(start_date)
-    )
-    items = response['Items']
-
-    while response.get('LastEvaluatedKey', False):
-        response = table.query(
-            KeyConditionExpression=Key('AssetID').eq(table_name) & Key('UniqueID').gt(start_date),
-            ExclusiveStartKey=response['LastEvaluatedKey'],
-        )
-        items = items + response['Items']
-    return items
-
-# this is the dynamodb part
-table = dynamodb.Table('agency_trades')
-response = table.scan(FilterExpression=Attr('Date').gt(startdate))
-items = response['Items']
-
-# data for all agency trading volumes using amazon dynamodb
-df = pd.DataFrame(items)
-df.replace('*', '', inplace=True)
-df[df.columns[4:]] = df[df.columns[4:]].apply(pd.to_numeric)
-df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d')
-
-# data for tba prices
-dftba = pd.DataFrame(get_prices('TBA', startdate))
-dftba.replace('*', '', inplace=True)
-dftba.replace('0', '', inplace=True)
-dftba.replace('0.0', '', inplace=True)
-dftba['Date'] = pd.to_datetime(dftba['Date'], format='%Y%m%d')
-coupons = ['<=2.5', '3', '3.5', '4', '4.5', '5', '>5.0']
-dftba[coupons] = dftba[coupons].apply(pd.to_numeric)
-dftba = dftba.replace(np.NaN, '')
-
-#dftba = pd.read_csv('tbaprices.csv', header=0)
-# get rid of stars, get rid of 0s
-#dftba.replace('*', '', inplace=True)
-#dftba.replace('0', '', inplace=True)
-#dftba.replace('0.0', '', inplace=True)
-#dftba['Date'] = pd.to_datetime(dftba['Date'], format='%Y%m%d')
-#coupons = ['<=2.5', '3', '3.5', '4', '4.5', '5', '>5.0']
-#dftba[coupons] = dftba[coupons].apply(pd.to_numeric)
-#dftba = dftba.replace(np.NaN, '')
-
-# data for mbs prices
-#dfmbsfixed = pd.read_csv('mbspricesfixed.csv')
-#dfmbsfixed.replace('*', '', inplace=True)
-#dfmbsfixed.replace('0', '', inplace=True)
-#dfmbsfixed.replace('0.0', '', inplace=True)
-#dfmbsfixed['Date'] = pd.to_datetime(dfmbsfixed['Date'], format='%Y%m%d')
-#dfmbsfixed[dfmbsfixed.columns[1:8]] = dfmbsfixed[dfmbsfixed.columns[1:8]].apply(pd.to_numeric)
-#dfmbsfixed.replace(np.NaN, '', inplace=True)
-
-dfmbsfixed = pd.DataFrame(get_prices('MBSFIXED', startdate))
-dfmbsfixed.replace('*', '', inplace=True)
-dfmbsfixed.replace('0', '', inplace=True)
-dfmbsfixed.replace('0.0', '', inplace=True)
-dfmbsfixed['Date'] = pd.to_datetime(dfmbsfixed['Date'], format='%Y%m%d')
-dfmbsfixed[dfmbsfixed.columns[0:7]] = dfmbsfixed[dfmbsfixed.columns[0:7]].apply(pd.to_numeric)
-dfmbsfixed.replace(np.NaN, '', inplace=True)
-
-dfmbsfloating = pd.DataFrame(get_prices('MBSFLOATING', startdate))
-dfmbsfloating.replace('*', '', inplace=True)
-dfmbsfloating.replace('0', '', inplace=True)
-dfmbsfloating.replace('0.0', '', inplace=True)
-dfmbsfloating['Date'] = pd.to_datetime(dfmbsfloating['Date'], format='%Y%m%d')
-dfmbsfloating[dfmbsfloating.columns[0:5]] = dfmbsfloating[dfmbsfloating.columns[0:5]].apply(pd.to_numeric)
-dfmbsfloating.replace(np.NaN, '', inplace=True)
-
-
-#dfmbsfloating = pd.read_csv('mbspricesfloating.csv')
-#dfmbsfloating.replace('*', '', inplace=True)
-#dfmbsfloating.replace('0', '', inplace=True)
-#dfmbsfloating.replace('0.0', '', inplace=True)
-#dfmbsfloating['Date'] = pd.to_datetime(dfmbsfloating['Date'], format='%Y%m%d')
-#dfmbsfloating[dfmbsfloating.columns[1:6]] = dfmbsfloating[dfmbsfloating.columns[1:6]].apply(pd.to_numeric)
-#dfmbsfloating.replace(np.NaN, '', inplace=True)
-
-# data for cmo prices
-df3 = pd.DataFrame(get_prices('CMO', startdate))
-df3.replace('*', '', inplace=True)
-df3.replace('0', '', inplace=True)
-df3.replace('0.0', '', inplace=True)
-df3['Date'] = pd.to_datetime(df3['Date'], format='%Y%m%d')
-vintages = ['PRE-2009', '2009-2013', '2014-2016', 'POST-2016']
-df3[vintages] = df3[vintages].apply(pd.to_numeric)
-df3 = df3.replace(np.NaN, '')
+#build datatables
+agency_trades = dv.get_trades()
+tba_prices = dv.get_tba_prices()
+mbs_fixed_prices = dv.get_mbs_fixed_prices()
+mbs_floating_prices = dv.get_mbs_floating_prices()
+cmo_prices = dv.get_cmo_prices()
 
 # launch app
 app = dash.Dash(__name__)
 app.title = 'Agency Trading Volumes and Prices (FINRA)'
 server = app.server
-
-
 
 #build and serve layouts
 def serve_layout():
@@ -296,10 +197,10 @@ app.layout = serve_layout
 
 def build_main_figure(tradetype, securitytype, mortgagetype, ):
     # build temp df (starting backwards with mortgage type
-    tempdf = df
+    tempdf = agency_trades
     if mortgagetype == 'TOTAL': pass
     else:
-        tempdf = df[df['AssetClassSubType'] == mortgagetype]
+        tempdf = agency_trades[agency_trades['AssetClassSubType'] == mortgagetype]
 
     # now build based on security type
     if securitytype == 'TOTAL': pass
@@ -369,12 +270,12 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
 
 
 def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
-    test = dftba[dftba['Measure'] == 'AVERAGE PRICE']
+    test = tba_prices[tba_prices['Measure'] == 'AVERAGE PRICE']
     test = test[test['AssetClassSubType'] == 'SINGLE FAMILY 30Y']
     test = test[test['SettlementDateChart'] == 'Current Month']
 
     # let's start with measure:
-    temp = dftba[dftba['Measure'] == selected_measure]
+    temp = tba_prices[tba_prices['Measure'] == selected_measure]
     temp = temp[temp['AssetClassSubType'] == selected_asset_class_subtype]
     temp = temp[temp['SettlementDateChart'] == selected_settlement_month]
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[selected_coupon_type]
@@ -423,13 +324,13 @@ def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selec
 def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon):
 
     # determine mortgage type:
-    if selected_mortgage == 'ARMS/HYBRIDS': temp = dfmbsfloating
-    else: temp = dfmbsfixed
+    if selected_mortgage == 'ARMS/HYBRIDS': temp = mbs_floating_prices
+    else: temp = mbs_fixed_prices
 
     # check to see if coupon and mortgage in conflict
-    if (selected_mortgage == 'ARMS/HYBRIDS') and (selected_coupon in dfmbsfixed.columns[1:8]):
+    if (selected_mortgage == 'ARMS/HYBRIDS') and (selected_coupon in mbs_fixed_prices.columns[1:8]):
         return {}
-    elif (selected_mortgage != 'ARMS/HYBRIDS') and (selected_coupon in dfmbsfloating.columns[0:5]):
+    elif (selected_mortgage != 'ARMS/HYBRIDS') and (selected_coupon in mbs_floating_prices.columns[0:5]):
         return {}
 
 
@@ -479,7 +380,7 @@ def build_cmo_price_figure(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
     else: cmo_measure2 = 'TOTAL'
 
     #building the dataframe
-    temp = df3[df3['Measure'] == cmo_measure]
+    temp = cmo_prices[cmo_prices['Measure'] == cmo_measure]
     temp = temp[temp['Measure2'] == cmo_measure2]
     temp = temp[temp['MortgageType'] == cmo_mortgage]
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[cmo_vintage]
@@ -577,18 +478,18 @@ def update_dropdown(selected_cmo_measure, selected_cmo_measure_subtype, selected
 )
 def update_dropdown(selected_measure, selected_mortgage, selected_coupon):
     if (selected_mortgage == 'ARMS/HYBRIDS'):
-        if selected_coupon not in dfmbsfloating.columns[0:5]:
-            return [{'label': i, 'value': i} for i in dfmbsfloating.columns[0:5]], build_mbs_price_figure(
-                selected_measure, selected_mortgage, dfmbsfloating.columns[0])
+        if selected_coupon not in mbs_floating_prices.columns[0:5]:
+            return [{'label': i, 'value': i} for i in mbs_floating_prices.columns[0:5]], build_mbs_price_figure(
+                selected_measure, selected_mortgage, mbs_floating_prices.columns[0])
         else:
-            return [{'label': i, 'value': i} for i in dfmbsfloating.columns[0:5]], build_mbs_price_figure(
+            return [{'label': i, 'value': i} for i in mbs_floating_prices.columns[0:5]], build_mbs_price_figure(
                 selected_measure, selected_mortgage, selected_coupon)
     else:
-        if selected_coupon not in dfmbsfixed.columns[1:8]:
-            return [{'label': i, 'value': i} for i in dfmbsfixed.columns[0:7]], build_mbs_price_figure(
-                selected_measure, selected_mortgage, dfmbsfixed.columns[1])
+        if selected_coupon not in mbs_fixed_prices.columns[1:8]:
+            return [{'label': i, 'value': i} for i in mbs_fixed_prices.columns[0:7]], build_mbs_price_figure(
+                selected_measure, selected_mortgage, mbs_fixed_prices.columns[1])
         else:
-            return [{'label': i, 'value': i} for i in dfmbsfixed.columns[0:7]], build_mbs_price_figure(
+            return [{'label': i, 'value': i} for i in mbs_fixed_prices.columns[0:7]], build_mbs_price_figure(
                 selected_measure, selected_mortgage, selected_coupon)
 
 
