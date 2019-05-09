@@ -41,10 +41,11 @@ def get_FINRA_files():
         r.release_conn()
     return True
 
-# run the monthly data all together now!
-prepare_csv_directory()
-get_FINRA_files()
-extractFINRAdata.get_prices_and_volumes('csv')
-dynamodb_write_tables.writeAllTrades()
-dynamodb_write_tables.writeAllPrices()
-print('Done!')
+def run_extraction():
+    # run the monthly data all together now!
+    prepare_csv_directory()
+    get_FINRA_files()
+    extractFINRAdata.get_prices_and_volumes('csv')
+    dynamodb_write_tables.writeAllTrades()
+    dynamodb_write_tables.writeAllPrices()
+    print('Done!')
