@@ -7,10 +7,13 @@ from datetime import datetime, timedelta
 
 # helper file for generating all the dataframes used in the visualization from DynamoDB
 
-session = boto3.Session(region_name='us-east-1',
-                        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-                        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
-dynamodb = session.resource('dynamodb')
+try:
+    session = boto3.Session(region_name='us-east-1',
+                            aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                            aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+    dynamodb = session.resource('dynamodb')
+except:
+    dynamodb = boto3.resource('dynamodb')
 
 #start date for the charts (6 months rolling)
 startdate = (datetime.now()-timedelta(days=60)).strftime('%Y%m%d')

@@ -195,6 +195,27 @@ def serve_layout():
     ])
 app.layout = serve_layout
 
+
+def build_scatter(tempdf, tempseries):
+    column_name = tempseries.name
+
+    if column_name == 'FNMA':
+        line_color = 'rgb(0, 0, 255)'
+    elif column_name == 'FHLMC':
+        line_color = 'rgb(250, 135, 117)'
+    elif column_name == 'GNMA':
+        line_color = 'rgb(205, 52, 181)'
+    else:
+        line_color = 'rgb(255, 215, 0)'
+
+    return go.Scatter(
+        x=tempdf.index,
+        y=tempseries.values,
+        name=column_name,
+        orientation='v',
+        marker=dict(color=line_color)
+    )
+
 def build_main_figure(tradetype, securitytype, mortgagetype, ):
     # build temp df (starting backwards with mortgage type
     tempdf = agency_trades
@@ -229,7 +250,6 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
     if mortgagetype == securitytype:
         chart_title = chart_title.replace('TOTAL, TOTAL', 'TOTAL')
 
-
     return {
             'data': [
                 go.Scatter(
@@ -238,7 +258,6 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
                     name='FNMA',
                     orientation='v',
                     marker=dict(color='rgb(0, 0, 255)')
-
                 ),
                 go.Scatter(
                     x=tempdf.index,
@@ -270,85 +289,25 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
 
 
 def build_tba_price_figure(selected_measure, selected_asset_class_subtype, selected_coupon_type, selected_settlement_month):
-
-    # let's start with measure:
+    # building the subset
     temp = tba_prices[tba_prices['Measure'] == selected_measure]
     temp = temp[temp['AssetClassSubType'] == selected_asset_class_subtype]
     temp = temp[temp['SettlementDateChart'] == selected_settlement_month]
-
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[selected_coupon_type]
+
+    #build the scatterplot
+    scatterplot = [build_scatter(temp, temp[i]) for i in temp.columns]
 
     # let's build title
     chart_title = '{}, {}, {}, Settlement Date: {}'.format(selected_measure, selected_asset_class_subtype, selected_coupon_type,
                                           selected_settlement_month)
-
-    if 'FNMA' not in temp.columns:
-        return {
-            'data': [
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['FNMA/UMBS'].values,
-                    name='FNMA/UMBS',
-                    orientation='v',
-                    marker=dict(color='rgb(255, 215, 0)')
-                ),
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['FHLMC'].values,
-                    name='FHLMC',
-                    orientation='v',
-                    marker=dict(color='rgb(250, 135, 117)')
-                ),
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['GNMA'].values,
-                    name='GNMA',
-                    orientation='v',
-                    marker=dict(color='rgb(205, 52, 181)')
-                ),
-            ],
+    return {
+            'data': scatterplot,
             'layout': go.Layout(
                 height=600,
                 title=chart_title,
             )
         }
-    else:
-        return {
-                'data': [
-                    go.Scatter(
-                        x=temp.index,
-                        y=temp['FNMA'].values,
-                        name='FNMA',
-                        orientation='v',
-                        marker=dict(color='rgb(0, 0, 255)')
-                    ),
-                    go.Scatter(
-                        x=temp.index,
-                        y=temp['FNMA/UMBS'].values,
-                        name='FNMA/UMBS',
-                        orientation='v',
-                        marker=dict(color='rgb(255, 215, 0)')
-                    ),
-                    go.Scatter(
-                        x=temp.index,
-                        y=temp['FHLMC'].values,
-                        name='FHLMC',
-                        orientation='v',
-                        marker=dict(color='rgb(250, 135, 117)')
-                    ),
-                    go.Scatter(
-                        x=temp.index,
-                        y=temp['GNMA'].values,
-                        name='GNMA',
-                        orientation='v',
-                        marker=dict(color='rgb(205, 52, 181)')
-                    ),
-                ],
-                'layout': go.Layout(
-                    height=600,
-                    title=chart_title,
-                )
-            }
 
 def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon):
 
@@ -362,40 +321,20 @@ def build_mbs_price_figure(selected_measure, selected_mortgage, selected_coupon)
     elif (selected_mortgage != 'ARMS/HYBRIDS') and (selected_coupon in mbs_floating_prices.columns[0:5]):
         return {}
 
-
     # then filter df
     temp = temp[temp['Measure'] == selected_measure]
     temp = temp[temp['Mortgage Type'] == selected_mortgage]
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)
     temp = temp[selected_coupon]
 
+    #build the scatterplot
+    scatterplot = [build_scatter(temp, temp[i]) for i in temp.columns]
+
     # build title
     chart_title = '{}, {}, {}'.format(selected_measure, selected_mortgage, selected_coupon)
 
     return {
-            'data': [
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['FNMA'].values,
-                    name='FNMA',
-                    orientation='v',
-                    marker=dict(color='rgb(0, 0, 255)')
-                ),
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['FHLMC'].values,
-                    name='FHLMC',
-                    orientation='v',
-                    marker=dict(color='rgb(250, 135, 117)')
-                ),
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['GNMA'].values,
-                    name='GNMA',
-                    orientation='v',
-                    marker=dict(color='rgb(205, 52, 181)')
-                ),
-            ],
+            'data': scatterplot,
             'layout': go.Layout(
                 height=600,
                 title=chart_title,
@@ -414,35 +353,14 @@ def build_cmo_price_figure(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
     temp = temp[temp['MortgageType'] == cmo_mortgage]
     temp = temp.set_index(['Date', 'Agency']).unstack(level=1)[cmo_vintage]
 
-
+    #build the scatterplot
+    scatterplot = [build_scatter(temp, temp[i]) for i in temp.columns]
 
     # building the title
     chart_title = '{}, {}, {}, Vintage: {}'.format(cmo_measure, cmo_measure2, cmo_mortgage, cmo_vintage)
 
     return {
-            'data': [
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['FNMA'].values,
-                    name='FNMA',
-                    orientation='v',
-                    marker=dict(color='rgb(0, 0, 255)')
-                ),
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['FHLMC'].values,
-                    name='FHLMC',
-                    orientation='v',
-                    marker=dict(color='rgb(250, 135, 117)')
-                ),
-                go.Scatter(
-                    x=temp.index,
-                    y=temp['GNMA'].values,
-                    name='GNMA',
-                    orientation='v',
-                    marker=dict(color='rgb(205, 52, 181)')
-                ),
-            ],
+            'data': scatterplot,
             'layout': go.Layout(
                 height=600,
                 title=chart_title,
