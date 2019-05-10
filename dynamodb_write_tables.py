@@ -41,7 +41,7 @@ def writeAllPrices():
     df = pd.read_csv('csv/prices_cmo.csv', header=0)
     for i in df.columns: df[i] = df[i].astype(str)
     df['AssetID'] = 'CMO'
-    df['UniqueID'] = df['Date'] + df['MortgageType'] + df['Measure'] + df['Agency']
+    df['UniqueID'] = df['Date'] + df['MortgageType'] + df['Measure'] + df['Measure2'] + df['Agency']
     stream = df.T.to_dict().values()
     for i in stream:
         print(i)
@@ -51,7 +51,7 @@ def writeAllPrices():
     df = pd.read_csv('csv/prices_mbsfixed.csv', header=0)
     for i in df.columns: df[i] = df[i].astype(str)
     df['AssetID'] = 'MBSFIXED'
-    df['UniqueID'] = df['Date'] + df['Mortgage Type'] + df['Measure'] + df['Measure2'] + df['Agency']
+    df['UniqueID'] = df['Date'] + df['Mortgage Type'] + df['Measure'] + df['Agency']
     stream = df.T.to_dict().values()
     for i in stream:
         print(i)
@@ -66,3 +66,4 @@ def writeAllPrices():
     for i in stream:
         print(i)
         table.put_item(Item=i)
+

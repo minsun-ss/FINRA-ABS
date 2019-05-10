@@ -12,10 +12,12 @@ mbs_fixed_prices = dv.get_mbs_fixed_prices()
 mbs_floating_prices = dv.get_mbs_floating_prices()
 cmo_prices = dv.get_cmo_prices()
 
+
 # launch app
 app = dash.Dash(__name__)
 app.title = 'Agency Trading Volumes and Prices (FINRA)'
 server = app.server
+
 
 #build and serve layouts
 def serve_layout():
@@ -198,7 +200,6 @@ app.layout = serve_layout
 
 def build_scatter(tempdf, tempseries):
     column_name = tempseries.name
-
     if column_name == 'FNMA':
         line_color = 'rgb(0, 0, 255)'
     elif column_name == 'FHLMC':
