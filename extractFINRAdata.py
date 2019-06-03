@@ -11,7 +11,7 @@ def get_prices_and_volumes(path):
 
     for zfile in os.listdir(directory):
         filename = os.fsdecode(zfile)
-        zf = zipfile.ZipFile('data/' + filename)
+        zf = zipfile.ZipFile(path + '/' + filename)
 
         extract_trading_volumes(zf)
         extract_tba_prices(zf)

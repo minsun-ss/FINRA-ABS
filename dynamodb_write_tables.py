@@ -58,7 +58,7 @@ def writeAllPrices():
         table.put_item(Item=i)
 
     # mbs floating
-    df = pd.read_csv('prices_mbsfloating.csv', header=0)
+    df = pd.read_csv('csv/prices_mbsfloating.csv', header=0)
     for i in df.columns: df[i] = df[i].astype(str)
     df['AssetID'] = 'MBSFLOATING'
     df['UniqueID'] = df['Date'] + df['Mortgage Type'] + df['Measure'] + df['Agency']
