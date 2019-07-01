@@ -1,8 +1,8 @@
 import os
 import urllib3
 from bs4 import BeautifulSoup
-import extractFINRAdata
-import dynamodb_write_tables
+import database.extractFINRAdata as extractFINRAdata
+import database.dynamodb_write_tables as dynamodb_write_tables
 
 # Monthly run to collect data
 def prepare_csv_directory():
@@ -17,7 +17,7 @@ def prepare_csv_directory():
         print('Removed {}'.format(file))
     return True
 
-def get_FINRA_files():
+def get_FINRA_files(months_back=2):
     # get the last two months of files
     print('Acquiring FINRA files from website...')
     url = 'http://tps.finra.org/idc-index.html'
@@ -29,7 +29,7 @@ def get_FINRA_files():
     finra_reports = [link.get('href') for link in soup.find_all('a') if 'HISTORIC' in str(link)]
 
     # get last two reports
-    for i in range(2):
+    for i in range(months_back):
         filename = str(finra_reports[i]).split('/')[-1]
         r = http.request('GET', finra_reports[i], preload_content=False)
         with open('csv/{}'.format(filename), 'wb') as out:
@@ -44,8 +44,10 @@ def get_FINRA_files():
 def run_extraction():
     # run the monthly data all together now!
     prepare_csv_directory()
-    get_FINRA_files()
+    get_FINRA_files(1)
     extractFINRAdata.get_prices_and_volumes('csv')
     dynamodb_write_tables.writeAllTrades()
     dynamodb_write_tables.writeAllPrices()
     print('Done!')
+
+run_extraction()

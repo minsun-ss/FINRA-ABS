@@ -3,7 +3,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
-import dataviz as dv
+import database.dataviz as dv
 
 #build datatables
 agency_trades = dv.get_trades()
@@ -19,6 +19,11 @@ app.title = 'Agency Trading Volumes and Prices (FINRA)'
 server = app.server
 
 
+'''
+===========
+DASH LAYOUT
+===========
+'''
 #build and serve layouts
 def serve_layout():
     return html.Div(children=[
@@ -233,11 +238,11 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
     # now build based on trade type
     temp_columns = []
     if tradetype == 'trades_num':
-        temp_columns = ['FNMATradeCount', 'FHLMCTradeCount', 'GNMATradeCount', 'OtherTradeCount']
+        temp_columns = ['UMBSTradeCount', 'FNMATradeCount', 'FHLMCTradeCount', 'GNMATradeCount', 'OtherTradeCount']
     elif tradetype == 'trades_$':
-        temp_columns = ['FNMA$Trades', 'FHLMC$Trades', 'GNMA$Trades', 'Other$Trades']
+        temp_columns = ['UMBS$Trades', 'FNMA$Trades', 'FHLMC$Trades', 'GNMA$Trades', 'Other$Trades']
     elif tradetype == 'trades_unique':
-        temp_columns = ['FNMAUniqueID', 'FHLMCUniqueID', 'GNMAUniqueID', 'OtherUniqueID']
+        temp_columns = ['UMBSUniqueID', 'FNMAUniqueID', 'FHLMCUniqueID', 'GNMAUniqueID', 'OtherUniqueID']
 
     # now build the title
     if tradetype == 'trades_num':
@@ -256,30 +261,37 @@ def build_main_figure(tradetype, securitytype, mortgagetype, ):
                 go.Scatter(
                     x=tempdf.index,
                     y=tempdf[temp_columns[0]].values,
-                    name='FNMA',
+                    name='UMBS',
                     orientation='v',
                     marker=dict(color='rgb(0, 0, 255)')
                 ),
                 go.Scatter(
                     x=tempdf.index,
                     y=tempdf[temp_columns[1]].values,
-                    name='FHLMC',
+                    name='FNMA',
                     orientation='v',
                     marker=dict(color='rgb(250, 135, 117)')
                 ),
                 go.Scatter(
                     x=tempdf.index,
                     y=tempdf[temp_columns[2]].values,
-                    name='GNMA',
+                    name='FHLMC',
                     orientation='v',
                     marker=dict(color='rgb(205, 52, 181)')
                 ),
                 go.Scatter(
                     x=tempdf.index,
                     y=tempdf[temp_columns[3]].values,
-                    name='Other',
+                    name='GNMA',
                     orientation='v',
                     marker = dict(color='rgb(255, 215, 0)')
+                ),
+                go.Scatter(
+                    x=tempdf.index,
+                    y=tempdf[temp_columns[4]].values,
+                    name='Other',
+                    orientation='v',
+                    marker=dict(color='rgb(255, 215, 0)')
                 ),
             ],
             'layout': go.Layout(

@@ -43,6 +43,7 @@ def get_trades():
     # data for all agency trading volumes using amazon dynamodb
     df = pd.DataFrame(items)
     df.replace('*', '', inplace=True)
+    df.replace(np.nan, '', inplace=True)
     df[df.columns[4:]] = df[df.columns[4:]].apply(pd.to_numeric)
     df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d')
     return df

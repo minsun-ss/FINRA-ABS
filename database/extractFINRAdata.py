@@ -43,9 +43,11 @@ def extract_trading_volumes(zf):
 
         # agency - filter out excess rows and add columns
         agency_df = agency_df[~(agency_df[0] == agency_df[1])]
-        agency_df.columns = ['AssetClass', 'AssetClassSubType', 'FNMATradeCount', 'FNMAUniqueID', 'FNMA$Trades',
-                             'FHLMCTradeCount', 'FHLMCUniqueID', 'FHLMC$Trades', 'GNMATradeCount', 'GNMAUniqueID',
-                             'GNMA$Trades', 'OtherTradeCount', 'OtherUniqueID', 'Other$Trades']
+        agency_df.columns = ['AssetClass', 'AssetClassSubType', 'UMBSTradeCount', 'UMBSUniqueID', 'UMBS$Trades',
+                             'FNMATradeCount', 'FNMAUniqueID', 'FNMA$Trades',
+                             'FHLMCTradeCount', 'FHLMCUniqueID', 'FHLMC$Trades',
+                             'GNMATradeCount', 'GNMAUniqueID', 'GNMA$Trades',
+                             'OtherTradeCount', 'OtherUniqueID', 'Other$Trades']
 
         # agency - add date
         agency_df['Date'] = trading_date
@@ -53,13 +55,13 @@ def extract_trading_volumes(zf):
         # non-agency = filter out excess columns, rename some mistakes
         nonagency_df = nonagency_df[~(nonagency_df[0] == nonagency_df[1])].drop([8, 9, 10, 11, 12, 13], axis=1)
         nonagency_df[0] = nonagency_df[1].where(
-            (nonagency_df[1] == 'CBO/CDO/CLO') ^ (nonagency_df[1] == 'OTHER')).fillna(nonagency_df[0])
+            (nonagency_df[1] == 'CBO/CDO/CLO') ^ (nonagency_df[1] == 'OTHER') ^ (nonagency_df[1] == 'ABS')).fillna(nonagency_df[0])
+        nonagency_df.drop(columns=[14, 15, 16], inplace=True)
         nonagency_df.columns = ['AssetClass', 'AssetClass2', 'IGTradeCount', 'IGUniqueID', 'IG$Trades', 'HYTradeCount',
                                 'HYUniqueID', 'HY$Trades']
 
         # non-agency add date and set index
         nonagency_df['Date'] = trading_date
-        # nonagency_df.set_index('AssetClass', inplace=True)
 
         # check to see if filepath exists and append headers if they don't
         if os.path.isfile('csv/tradingvolumes_agency.csv'):
@@ -257,3 +259,69 @@ def extract_mbs_prices(zf):
             # otherwise, append the file without headers
         df1.to_csv('csv/prices_mbsfixed.csv', header=False, index=False, mode='a')
         df2.to_csv('csv/prices_mbsfloating.csv', header=False, index=False, mode='a')
+
+
+def extract_trading_volumesPreJune2019(zf):
+    '''
+    Pulls data from zip files from prior to July 2019. To be specific, UMBS trade volumes began reporting
+    June 4th and the June data set contains UMBS volume data. Writes the files to the /csv folder.
+    :param zf: zipfile containing FINRA's prices and volumes for the month
+    :return: None
+    '''
+    # build namelist of specific files I need
+    star_list = [i for i in zf.namelist() if 'STAR' in i]
+
+    for trading_day in star_list:
+        # get trading day date
+        trading_date = trading_day.split('-')[1].replace('.xlsx', '')
+
+        # rearranged trade date
+        trading_date = '{}{}{}'.format(trading_date[:4], trading_date[4:6], trading_date[6:])
+
+        # testing on a single file
+        df = pd.read_excel(zf.open(trading_day), sheet_name='TradingActivity', skiprows=11,
+                           skipfooter=8, header=None)
+
+        # move some headers to the left, fill out NaN
+        df[0] = df[1].where(df[2].isna()).fillna(method='ffill')
+
+        # split into agency and non-agency
+        agency_df = df[:12].copy()
+        nonagency_df = df[16:].copy()
+
+        # agency - filter out excess rows and add columns
+        agency_df = agency_df[~(agency_df[0] == agency_df[1])]
+        agency_df.columns = ['AssetClass', 'AssetClassSubType', 'FNMATradeCount', 'FNMAUniqueID', 'FNMA$Trades',
+                             'FHLMCTradeCount', 'FHLMCUniqueID', 'FHLMC$Trades', 'GNMATradeCount', 'GNMAUniqueID',
+                             'GNMA$Trades', 'OtherTradeCount', 'OtherUniqueID', 'Other$Trades']
+
+        # agency - add date
+        agency_df['Date'] = trading_date
+
+        # non-agency = filter out excess columns, rename some mistakes
+        nonagency_df = nonagency_df[~(nonagency_df[0] == nonagency_df[1])].drop([8, 9, 10, 11, 12, 13], axis=1)
+        nonagency_df[0] = nonagency_df[1].where(
+            (nonagency_df[1] == 'CBO/CDO/CLO') ^ (nonagency_df[1] == 'OTHER')).fillna(nonagency_df[0])
+        nonagency_df.columns = ['AssetClass', 'AssetClass2', 'IGTradeCount', 'IGUniqueID', 'IG$Trades', 'HYTradeCount',
+                                'HYUniqueID', 'HY$Trades']
+
+        # non-agency add date and set index
+        nonagency_df['Date'] = trading_date
+        # nonagency_df.set_index('AssetClass', inplace=True)
+
+        # check to see if filepath exists and append headers if they don't
+        if os.path.isfile('csv/tradingvolumes_agency.csv'):
+            pass
+        else:
+            pd.DataFrame(agency_df.columns).transpose().to_csv('csv/tradingvolumes_agency.csv',
+                                                               header=False, index=False, mode='a')
+
+        if os.path.isfile('csv/trading_volumes_nonagency.csv'):
+            pass
+        else:
+            pd.DataFrame(nonagency_df.columns).transpose().to_csv('csv/tradingvolumes_nonagency.csv',
+                                                                  header=False, index=False, mode='a')
+
+            # otherwise, append the file without  headers
+        agency_df.to_csv('csv/tradingvolumes_agency.csv', header=False, index=False, mode='a')
+        nonagency_df.to_csv('csv/tradingvolumes_nonagency.csv', header=False, index=False, mode='a')
