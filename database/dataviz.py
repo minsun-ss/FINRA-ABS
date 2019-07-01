@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 # helper file for generating all the dataframes used in the visualization from DynamoDB
 
+# Sets up the DynamoDB session
 try:
     session = boto3.Session(region_name='us-east-1',
                             aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
@@ -15,11 +16,17 @@ try:
 except:
     dynamodb = boto3.resource('dynamodb')
 
-#start date for the charts (6 months rolling)
+#start date for the charts (uses a 60 day rolling average)
 startdate = (datetime.now()-timedelta(days=60)).strftime('%Y%m%d')
 
-# helper for price tables
 def get_prices(table_name, start_date):
+    '''
+    Pulls all pricee data across all asset categories based on specified start date to current date from DynamoDB.
+    
+    :param table_name: name of price data table
+    :param start_date: Earliest date to pull data from DynamoDB.
+    :return: all the database entries beginning from start date to current date of specified price table.
+    '''
     table = dynamodb.Table('agency_prices_alt')
     response = table.query(
         KeyConditionExpression=Key('AssetID').eq(table_name) & Key('UniqueID').gt(start_date)
@@ -35,6 +42,11 @@ def get_prices(table_name, start_date):
     return items
 
 def get_trades():
+    '''
+    Pulls the top level trade volume data across all asset categories based on specified start date to current date
+    from DynamoDB.
+    :return: dataframe with the trading volume data.
+    '''
     # this is the dynamodb part
     table = dynamodb.Table('agency_trades')
     response = table.scan(FilterExpression=Attr('Date').gt(startdate))
@@ -48,8 +60,11 @@ def get_trades():
     df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d')
     return df
 
-# data for tba prices
 def get_tba_prices():
+    '''
+    Pulls just TBA prices from the run generated from get_prices(). Cleans it up for general use.
+    :return: dataframe with TBA-only data.
+    '''
     dftba = pd.DataFrame(get_prices('TBA', startdate))
     dftba.replace('*', '', inplace=True)
     dftba.replace('0', '', inplace=True)
@@ -60,8 +75,11 @@ def get_tba_prices():
     dftba = dftba.replace(np.NaN, '')
     return dftba
 
-# data for fixed rate mbs prices
 def get_mbs_fixed_prices():
+    '''
+    Pulls just fixed-rate MBS prices from the run generated from get_prices(). Cleans it up for general use.
+    :return:  dataframe with fixed-rate MBS-only data.
+    '''
 
     dfmbsfixed = pd.DataFrame(get_prices('MBSFIXED', startdate))
     dfmbsfixed.replace('*', '', inplace=True)
@@ -74,6 +92,10 @@ def get_mbs_fixed_prices():
 
 # data for floating rate mbs prices
 def get_mbs_floating_prices():
+    '''
+    Pulls just floating-rate MBS prices from the run generated from get_prices(). Cleans it up for general use.
+    :return: dataframe with floating-rate MBS-only data.
+    '''
     dfmbsfloating = pd.DataFrame(get_prices('MBSFLOATING', startdate))
     dfmbsfloating.replace('*', '', inplace=True)
     dfmbsfloating.replace('0', '', inplace=True)
@@ -83,8 +105,11 @@ def get_mbs_floating_prices():
     dfmbsfloating.replace(np.NaN, '', inplace=True)
     return dfmbsfloating
 
-# data and cleanup for cmo prices
 def get_cmo_prices():
+    '''
+    Pulls just CMO prices from the run generated from get_prices(). Cleans it up for general use.
+    :return: dataframe with CMO-only price data.
+    '''
     # data for cmo prices
     df3 = pd.DataFrame(get_prices('CMO', startdate))
     df3.replace('*', '', inplace=True)
