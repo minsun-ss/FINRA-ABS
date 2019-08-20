@@ -49,5 +49,3 @@ def run_extraction():
     dynamodb_write_tables.writeAllTrades()
     dynamodb_write_tables.writeAllPrices()
     print('Done!')
-
-run_extraction()
